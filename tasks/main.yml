@@ -1,0 +1,49 @@
+---
+
+- name: lxc > clusters > check > LXC clusters
+  shell: lxc remote list --format json | jq -r '. | keys[] as $k | (.[$k] | select(.Protocol == "lxd") | $k)'
+  register: lxc_cluster_cmd
+  changed_when: false
+
+- name: lxc > clusters > declare > LXC cluster node names
+  set_fact:
+    lxc_cluster_all: "{{ lxc_cluster_cmd.stdout_lines }}"
+
+- name: lxc > clusters > failure > LXC cluster name
+  fail:
+    msg: "LXC cluster not available."
+  when: not (lxc_cluster_all | default([]) | length)
+
+- name: lxc > clusters > debug > LXC cluster names
+  debug:
+    msg: "{{ lxc_cluster_all }}"
+    verbosity: 4
+
+- name: lxc > clusters > check > Default lxc cluster name
+  shell: lxc remote get-default
+  register: lxc_cluster_cmd
+  changed_when: false
+
+- name: lxc > clusters > declare > Default lxc cluster name
+  set_fact:
+    lxc_cluster_default: "{{ lxc_cluster_cmd.stdout }}"
+
+- name: lxc > clusters > debug > Default lxc cluster name
+  debug:
+    msg: "{{ lxc_cluster_default }}"
+    verbosity: 3
+
+- name: lxc > clusters > declare > LXC cluster nane
+  set_fact:
+    lxc_cluster: "{{ lxc_cluster_default }}"
+  when: lxc_cluster is undefined or lxc_cluster is none
+
+- name: lxc > clusters > failure > LXC cluster name
+  fail:
+    msg: "Select one of the available lxc_cluster from [{{ lxc_cluster_all | join(', ') }}]."
+  when: lxc_cluster not in lxc_cluster_all
+
+- name: lxc > cluster > debug > LXC cluster name
+  debug:
+    msg: "{{ lxc_cluster }}"
+    verbosity: 2
